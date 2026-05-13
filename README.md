@@ -6,6 +6,10 @@ BepInEx itself targets Unity/.NET games, so this project uses the same idea rath
 
 The installer creates a separate modded copy of the game. It does not modify the original Sol Cesto folder.
 
+## Download
+
+Download `SolCestoModKitInstaller.exe` from the [Releases page](https://github.com/RyanCraighead/sol-cesto-modkit/releases).
+
 ## What It Installs
 
 ```text
