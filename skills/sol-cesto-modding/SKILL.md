@@ -95,7 +95,7 @@ Recommended approach:
 PowerShell/.NET inspection commands:
 
 ```powershell
-$game = "C:\Users\Ryan\Downloads\Sol.Cesto.v100.2\Sol.Cesto.v100.2\Sol Cesto"
+$game = "C:\path\to\Sol Cesto\"
 $pkg = Join-Path $game "package.nw"
 
 if (Test-Path -LiteralPath $pkg -PathType Container) {
