@@ -5,11 +5,7 @@ description: Game-specific workflow for inspecting, unpacking, patching, and tes
 
 # Sol Cesto Modding Skill
 
-Use this skill when the user wants to inspect, modify, patch, or build tooling for Sol Cesto, especially the Windows `v100.2` build located at:
-
-```text
-C:\Users\Ryan\Downloads\Sol.Cesto.v100.2\Sol.Cesto.v100.2\Sol Cesto
-```
+Use this skill when the user wants to inspect, modify, patch, or build tooling for Sol Cesto, especially the Windows `v100.2` build
 
 This is not a general Cheat Engine workflow. For this game, the reliable path is to inspect and patch the NW.js/Construct JavaScript payload inside `package.nw`, then test a separate modded copy of the game.
 
