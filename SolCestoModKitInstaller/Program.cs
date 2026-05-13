@@ -3,7 +3,7 @@ using System.Globalization;
 using System.IO.Compression;
 using System.Text;
 
-namespace SolCestoPatcher;
+namespace SolCestoModKitInstaller;
 
 internal static class Program
 {
@@ -16,7 +16,14 @@ internal static class Program
                 ? parsedValue
                 : 999;
 
-            Patcher.CreatePatchedBuild(new PatchOptions(args[1], args[2], moneyValue), _ => { });
+            ModKitInstaller.CreateModdedBuild(
+                new PatchOptions(
+                    GameFolder: args[1],
+                    OutputFolder: args[2],
+                    MoneyValue: moneyValue,
+                    IncludeMoneyMod: true,
+                    MoneyLockStartsOn: false),
+                _ => { });
             return 0;
         }
 
@@ -31,6 +38,8 @@ internal sealed class MainForm : Form
     private readonly TextBox _gameFolderText = new();
     private readonly TextBox _outputFolderText = new();
     private readonly NumericUpDown _moneyValue = new();
+    private readonly CheckBox _includeMoneyMod = new();
+    private readonly CheckBox _moneyLockStartsOn = new();
     private readonly Button _patchButton = new();
     private readonly Button _browseGameButton = new();
     private readonly Button _browseOutputButton = new();
@@ -40,7 +49,7 @@ internal sealed class MainForm : Form
 
     public MainForm()
     {
-        Text = "Sol Cesto Build Patcher";
+        Text = "Sol Cesto ModKit Installer";
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(780, 520);
         Size = new Size(880, 570);
@@ -62,7 +71,7 @@ internal sealed class MainForm : Form
 
         var title = new Label
         {
-            Text = "Pick the Sol Cesto game folder. The patcher creates a separate patched copy next to it.",
+            Text = "Pick the Sol Cesto game folder. The installer creates a separate modded copy next to it.",
             AutoSize = true,
             Padding = new Padding(0, 0, 0, 10)
         };
@@ -88,8 +97,9 @@ internal sealed class MainForm : Form
         _outputFolderText.PlaceholderText = @"Auto-fills after selecting the game folder";
         AutoFillOutputFolder();
 
-        AppendLog("Money lock starts OFF in the patched game.");
-        AppendLog("In-game hotkeys: F8 sets money once, F9 toggles the money lock.");
+        AppendLog("Installs a lightweight BepInEx-style JavaScript mod loader for Sol Cesto.");
+        AppendLog("Generated mods live in the output folder's mods directory.");
+        AppendLog("Default money mod hotkeys: F8 sets money once, F9 toggles the money lock.");
     }
 
     private Control CreateFolderRow(string labelText, TextBox textBox, Button button)
@@ -137,7 +147,7 @@ internal sealed class MainForm : Form
 
         panel.Controls.Add(new Label
         {
-            Text = "Money value",
+            Text = "Money mod value",
             AutoSize = true,
             Margin = new Padding(0, 7, 8, 0)
         });
@@ -148,19 +158,31 @@ internal sealed class MainForm : Form
         _moneyValue.Width = 100;
         panel.Controls.Add(_moneyValue);
 
-        _openFolderWhenDone.Text = "Open patched folder";
+        _includeMoneyMod.Text = "Include money mod";
+        _includeMoneyMod.Checked = true;
+        _includeMoneyMod.AutoSize = true;
+        _includeMoneyMod.Margin = new Padding(18, 6, 0, 0);
+        panel.Controls.Add(_includeMoneyMod);
+
+        _moneyLockStartsOn.Text = "Lock starts on";
+        _moneyLockStartsOn.Checked = false;
+        _moneyLockStartsOn.AutoSize = true;
+        _moneyLockStartsOn.Margin = new Padding(18, 6, 0, 0);
+        panel.Controls.Add(_moneyLockStartsOn);
+
+        _openFolderWhenDone.Text = "Open modded folder";
         _openFolderWhenDone.Checked = true;
         _openFolderWhenDone.AutoSize = true;
         _openFolderWhenDone.Margin = new Padding(18, 6, 0, 0);
         panel.Controls.Add(_openFolderWhenDone);
 
-        _launchWhenDone.Text = "Launch patched game";
+        _launchWhenDone.Text = "Launch modded game";
         _launchWhenDone.Checked = false;
         _launchWhenDone.AutoSize = true;
         _launchWhenDone.Margin = new Padding(18, 6, 0, 0);
         panel.Controls.Add(_launchWhenDone);
 
-        _patchButton.Text = "Create patched build";
+        _patchButton.Text = "Create modded build";
         _patchButton.AutoSize = true;
         _patchButton.Margin = new Padding(28, 0, 0, 0);
         panel.Controls.Add(_patchButton);
@@ -187,7 +209,7 @@ internal sealed class MainForm : Form
     {
         using var dialog = new FolderBrowserDialog
         {
-            Description = "Select or create the output folder for the patched copy",
+            Description = "Select or create the output folder for the modded copy",
             UseDescriptionForTitle = true,
             SelectedPath = OutputBrowserStartFolder()
         };
@@ -214,7 +236,7 @@ internal sealed class MainForm : Form
                 return;
             }
 
-            _outputFolderText.Text = Path.Combine(parent, source.Name + " patched");
+            _outputFolderText.Text = Path.Combine(parent, source.Name + " modded");
         }
         catch
         {
@@ -259,14 +281,16 @@ internal sealed class MainForm : Form
             var options = new PatchOptions(
                 GameFolder: _gameFolderText.Text.Trim(),
                 OutputFolder: _outputFolderText.Text.Trim(),
-                MoneyValue: (int)_moneyValue.Value);
+                MoneyValue: (int)_moneyValue.Value,
+                IncludeMoneyMod: _includeMoneyMod.Checked,
+                MoneyLockStartsOn: _moneyLockStartsOn.Checked);
 
             if (Directory.Exists(options.OutputFolder))
             {
                 var answer = MessageBox.Show(
                     this,
                     "The output folder already exists and will be replaced:\r\n\r\n" + options.OutputFolder,
-                    "Replace patched folder?",
+                    "Replace modded folder?",
                     MessageBoxButtons.OKCancel,
                     MessageBoxIcon.Warning);
 
@@ -278,7 +302,7 @@ internal sealed class MainForm : Form
             }
 
             _log.Clear();
-            await Task.Run(() => Patcher.CreatePatchedBuild(options, AppendLog));
+            await Task.Run(() => ModKitInstaller.CreateModdedBuild(options, AppendLog));
 
             AppendLog("Done.");
 
@@ -305,7 +329,7 @@ internal sealed class MainForm : Form
         catch (Exception ex)
         {
             AppendLog("ERROR: " + ex.Message);
-            MessageBox.Show(this, ex.Message, "Patch failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, ex.Message, "Install failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         finally
         {
@@ -325,16 +349,21 @@ internal sealed class MainForm : Form
     }
 }
 
-internal sealed record PatchOptions(string GameFolder, string OutputFolder, int MoneyValue);
+internal sealed record PatchOptions(
+    string GameFolder,
+    string OutputFolder,
+    int MoneyValue,
+    bool IncludeMoneyMod,
+    bool MoneyLockStartsOn);
 
-internal static class Patcher
+internal static class ModKitInstaller
 {
-    private const string NewMarkerStart = "/* BEGIN SolCesto money helper */";
-    private const string NewMarkerEnd = "/* END SolCesto money helper */";
+    private const string MoneyMarkerStart = "/* BEGIN SolCesto money helper */";
+    private const string MoneyMarkerEnd = "/* END SolCesto money helper */";
     private const string OldMarkerStart = "/* SolCesto gold helper injected by Codex */";
     private const string OldMarkerEnd = "console.log(\"[SolCesto gold helper] loaded. F8 sets gold to 999. F9 toggles lock.\");\r\n}());";
 
-    public static void CreatePatchedBuild(PatchOptions options, Action<string> log)
+    public static void CreateModdedBuild(PatchOptions options, Action<string> log)
     {
         var sourceDir = FullPath(options.GameFolder);
         var outputDir = FullPath(options.OutputFolder);
@@ -398,20 +427,28 @@ internal static class Patcher
             throw new FileNotFoundException("Could not find scripts\\main.js inside package.nw.");
         }
 
-        log("Injecting money helper...");
+        log("Injecting Sol Cesto ModKit loader...");
         var mainText = File.ReadAllText(mainJsPath, Encoding.UTF8);
         mainText = RemoveExistingHelperBlocks(mainText);
-        mainText = mainText.TrimEnd() + Environment.NewLine + Environment.NewLine + BuildHelperScript(options.MoneyValue) + Environment.NewLine;
+        mainText = mainText.TrimEnd() + Environment.NewLine + Environment.NewLine + FrameworkTemplates.LoaderScript() + Environment.NewLine;
         File.WriteAllText(mainJsPath, mainText, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
-        log("Patched executable:");
+        CreateModsFolder(outputDir, options, log);
+
+        log("Modded executable:");
         log(Path.Combine(outputDir, "SolCesto.exe"));
-        log("In-game hotkeys: F8 sets money once, F9 toggles lock. Lock starts off.");
+        log("Mods folder:");
+        log(Path.Combine(outputDir, "mods"));
+        if (options.IncludeMoneyMod)
+        {
+            log("Money mod hotkeys: F8 sets money once, F9 toggles lock.");
+        }
     }
 
     private static string RemoveExistingHelperBlocks(string text)
     {
-        text = RemoveDelimitedBlock(text, NewMarkerStart, NewMarkerEnd);
+        text = RemoveDelimitedBlock(text, FrameworkTemplates.LoaderMarkerStart, FrameworkTemplates.LoaderMarkerEnd);
+        text = RemoveDelimitedBlock(text, MoneyMarkerStart, MoneyMarkerEnd);
 
         var oldStart = text.IndexOf(OldMarkerStart, StringComparison.Ordinal);
         if (oldStart >= 0)
@@ -424,6 +461,27 @@ internal static class Patcher
         }
 
         return text;
+    }
+
+    private static void CreateModsFolder(string outputDir, PatchOptions options, Action<string> log)
+    {
+        var modsDir = Path.Combine(outputDir, "mods");
+        var examplesDir = Path.Combine(modsDir, "examples");
+
+        log("Writing mods folder...");
+        Directory.CreateDirectory(modsDir);
+        Directory.CreateDirectory(examplesDir);
+
+        FrameworkTemplates.WriteUtf8NoBom(Path.Combine(modsDir, "mods.json"), FrameworkTemplates.Manifest(options.IncludeMoneyMod));
+        FrameworkTemplates.WriteUtf8NoBom(Path.Combine(modsDir, "README.md"), FrameworkTemplates.ModsReadme());
+        FrameworkTemplates.WriteUtf8NoBom(Path.Combine(examplesDir, "example-overlay.js"), FrameworkTemplates.ExampleOverlayMod());
+
+        if (options.IncludeMoneyMod)
+        {
+            FrameworkTemplates.WriteUtf8NoBom(
+                Path.Combine(modsDir, "money-lock.js"),
+                FrameworkTemplates.MoneyMod(options.MoneyValue, options.MoneyLockStartsOn));
+        }
     }
 
     private static string RemoveDelimitedBlock(string text, string start, string end)
@@ -444,174 +502,6 @@ internal static class Patcher
 
             text = text.Remove(startIndex, endIndex + end.Length - startIndex);
         }
-    }
-
-    private static string BuildHelperScript(int moneyValue)
-    {
-        var value = moneyValue.ToString(CultureInfo.InvariantCulture);
-        return """
-__START_MARKER__
-(function () {
-    "use strict";
-
-    var MONEY_VALUE = __MONEY_VALUE__;
-    var lockMoney = false;
-    var lastMessageAt = 0;
-
-    function getRuntime() {
-        var iface = window.c3_runtimeInterface;
-        if (!iface || !iface._localRuntime || !iface._localRuntime.GetIRuntime) {
-            return null;
-        }
-
-        return iface._localRuntime.GetIRuntime();
-    }
-
-    function getObjectInstances(objectName) {
-        var runtime = getRuntime();
-        var objectClass = runtime && runtime.objects ? runtime.objects[objectName] : null;
-        var firstInstance = null;
-
-        if (!objectClass) {
-            return [];
-        }
-
-        if (objectClass.getAllInstances) {
-            return objectClass.getAllInstances();
-        }
-
-        if (objectClass.getFirstInstance) {
-            firstInstance = objectClass.getFirstInstance();
-            return firstInstance ? [firstInstance] : [];
-        }
-
-        return [];
-    }
-
-    function setMoneyOnObject(objectName, value) {
-        var instances = getObjectInstances(objectName);
-        var changed = 0;
-        var i;
-        var inst;
-
-        for (i = 0; i < instances.length; i += 1) {
-            inst = instances[i];
-            if (!inst || !inst.instVars) {
-                continue;
-            }
-
-            if (typeof inst.instVars.or !== "undefined") {
-                inst.instVars.or = value;
-                changed += 1;
-            }
-
-            if (objectName === "metaProgression") {
-                if (typeof inst.instVars.or_ancien !== "undefined") {
-                    inst.instVars.or_ancien = value;
-                }
-                if (typeof inst.instVars.orEver !== "undefined") {
-                    inst.instVars.orEver = value;
-                }
-            }
-        }
-
-        return changed;
-    }
-
-    function updateMoneyText(value) {
-        var instances = getObjectInstances("hero_or");
-        var i;
-        var inst;
-
-        for (i = 0; i < instances.length; i += 1) {
-            inst = instances[i];
-            try {
-                if (typeof inst.text !== "undefined") {
-                    inst.text = String(value);
-                }
-                if (inst.setText) {
-                    inst.setText(String(value));
-                }
-                if (inst.SetText) {
-                    inst.SetText(String(value));
-                }
-            } catch (err) {
-            }
-        }
-    }
-
-    function setMoney(value) {
-        var changed = 0;
-        changed += setMoneyOnObject("heros", value);
-        changed += setMoneyOnObject("metaProgression", value);
-        updateMoneyText(value);
-        return changed > 0;
-    }
-
-    function showMessage(text) {
-        var now = Date.now();
-        if (now - lastMessageAt < 250) {
-            return;
-        }
-        lastMessageAt = now;
-
-        var el = document.getElementById("solcesto-money-helper-status");
-        if (!el) {
-            el = document.createElement("div");
-            el.id = "solcesto-money-helper-status";
-            el.style.cssText = "position:fixed;left:16px;top:16px;z-index:2147483647;padding:8px 10px;background:rgba(0,0,0,.75);color:#fff;font:14px/1.3 sans-serif;border-radius:4px;pointer-events:none";
-            document.documentElement.appendChild(el);
-        }
-
-        el.textContent = text;
-        el.style.display = "block";
-        clearTimeout(el._hideTimer);
-        el._hideTimer = setTimeout(function () {
-            el.style.display = "none";
-        }, 1600);
-    }
-
-    window.solCestoSetMoney = function (value) {
-        var numericValue = Number(value);
-        if (!isFinite(numericValue)) {
-            numericValue = MONEY_VALUE;
-        }
-
-        var ok = setMoney(numericValue);
-        showMessage(ok ? "Money set to " + numericValue : "Money target is not available yet");
-        return ok;
-    };
-
-    window.addEventListener("keydown", function (event) {
-        if (event.repeat) {
-            return;
-        }
-
-        if (event.code === "F8") {
-            event.preventDefault();
-            window.solCestoSetMoney(MONEY_VALUE);
-        } else if (event.code === "F9") {
-            event.preventDefault();
-            lockMoney = !lockMoney;
-            if (lockMoney) {
-                setMoney(MONEY_VALUE);
-            }
-            showMessage(lockMoney ? "Money lock on: " + MONEY_VALUE : "Money lock off");
-        }
-    }, true);
-
-    setInterval(function () {
-        if (lockMoney) {
-            setMoney(MONEY_VALUE);
-        }
-    }, 250);
-
-    console.log("[SolCesto money helper] loaded. F8 sets money. F9 toggles lock. Lock starts off.");
-}());
-__END_MARKER__
-""".Replace("__START_MARKER__", NewMarkerStart, StringComparison.Ordinal)
-           .Replace("__END_MARKER__", NewMarkerEnd, StringComparison.Ordinal)
-           .Replace("__MONEY_VALUE__", value, StringComparison.Ordinal);
     }
 
     private static void CopyDirectory(string sourceDir, string destinationDir, string? entryNameToSkip = null)

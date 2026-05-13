@@ -1,65 +1,121 @@
-# Sol Cesto Gold Patcher
+# Sol Cesto ModKit Installer
 
-Gold-focused patcher for Sol Cesto. The Windows patcher creates a separate patched copy of the game with gold hotkeys.
+A small BepInEx-style mod framework for the Windows NW.js/Construct build of Sol Cesto `v100.2`.
 
-This is specifically for setting and locking Sol Cesto gold. It is not a general-purpose mod loader or full game editor.
+BepInEx itself targets Unity/.NET games, so this project uses the same idea rather than the same runtime: install one bootstrap loader into `package.nw\scripts\main.js`, then load separate JavaScript mods from a normal `mods` folder beside `SolCesto.exe`.
 
-Tested with Sol Cesto `v100.2`.
+The installer creates a separate modded copy of the game. It does not modify the original Sol Cesto folder.
 
-Download the ready-to-use EXE from the [Releases page](https://github.com/RyanCraighead/sol-cesto-local-patcher/releases).
+## What It Installs
 
-## Release Files
+```text
+Sol Cesto modded\
+  SolCesto.exe
+  package.nw\
+    scripts\main.js        bootstrap loader injected here
+  mods\
+    mods.json              enabled mod list
+    money-lock.js          example/proven gold mod
+    README.md              local modding notes
+    examples\
+      example-overlay.js
+```
 
-- `SolCestoPatcher.exe`: self-contained Windows GUI gold patcher.
+The bootstrap exposes `window.SolCestoModding` and loads enabled CommonJS mods from `mods\mods.json`.
 
-## Using the Gold Patcher EXE
+## Using The Installer
 
-1. Download `SolCestoPatcher.exe` from [Releases](https://github.com/RyanCraighead/sol-cesto-local-patcher/releases).
-2. Run `SolCestoPatcher.exe`.
-3. For `Game folder`, select the folder containing `SolCesto.exe` and `package.nw`.
-4. Leave `Output folder` as the auto-filled patched folder, or choose your own separate output folder.
-5. Set `Money value`. The default is `999`.
-6. Click `Create patched build`.
-7. Run `SolCesto.exe` from the patched output folder.
+1. Run `SolCestoModKitInstaller.exe`.
+2. For `Game folder`, select the folder containing `SolCesto.exe` and `package.nw`.
+3. Leave `Output folder` as the auto-filled `Sol Cesto modded` folder, or choose another separate folder.
+4. Leave `Include money mod` checked if you want the known working gold mod installed.
+5. Click `Create modded build`.
+6. Run `SolCesto.exe` from the modded output folder.
 
-The patched game adds gold hotkeys:
+Money mod hotkeys:
 
 - `F8`: set money once.
 - `F9`: toggle money lock.
 
-The money lock starts off by default.
+By default the money mod is loaded but passive until you press `F8` or turn the lock on with `F9`.
 
-## Building the Gold Patcher
+The money mod updates the real Construct runtime state, not only the visible text:
+
+- `heros.instVars.or`
+- `metaProgression.instVars.or`
+- `metaProgression.instVars.or_ancien`
+- `metaProgression.instVars.orEver`
+- `hero_or` display text
+
+## Creating A Mod
+
+Create a `.js` file in the output `mods` folder:
+
+```js
+module.exports = function (api) {
+  api.registerMod({ id: "my-mod", name: "My Mod", version: "1.0.0" });
+
+  api.onRuntimeReady(function () {
+    api.showMessage("My mod loaded");
+  });
+
+  api.addHotkey("F10", function (event) {
+    event.preventDefault();
+    api.showMessage("F10 pressed");
+  });
+};
+```
+
+Add it to `mods\mods.json`:
+
+```json
+{
+  "mods": [
+    { "file": "money-lock.js", "enabled": true },
+    { "file": "my-mod.js", "enabled": true }
+  ]
+}
+```
+
+## Mod API
+
+Available through the `api` object passed to each mod:
+
+- `api.getRuntime()`
+- `api.getObjectInstances(objectName)`
+- `api.setInstanceVar(objectName, varName, value)`
+- `api.getGlobalVar(name)`
+- `api.setGlobalVar(name, value)`
+- `api.onRuntimeReady(callback)`
+- `api.onTick(callback)`
+- `api.addHotkey("F10", callback)`
+- `api.showMessage(text)`
+- `api.log(text)`
+- `api.warn(text)`
+- `api.registerMod(metadata)`
+- `api.getRegisteredMods()`
+
+## Build
 
 From the repository root:
 
 ```powershell
-dotnet publish .\SolCestoPatcher\SolCestoPatcher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o .\output\SolCestoPatcher
+dotnet publish .\SolCestoModKitInstaller\SolCestoModKitInstaller.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o .\output\SolCestoModKitInstaller
 ```
 
 The EXE will be written to:
 
 ```text
-output\SolCestoPatcher\SolCestoPatcher.exe
+output\SolCestoModKitInstaller\SolCestoModKitInstaller.exe
 ```
+
+## Modding Skill
+
+The reusable Sol Cesto inspection/modding workflow is captured in [skills/sol-cesto-modding/SKILL.md](skills/sol-cesto-modding/SKILL.md). It documents how to unpack `package.nw`, inspect the NW.js/Construct runtime, find real game-state targets, inject marked helper code, and test modded builds.
 
 ## Notes
 
-- Use this gold patcher only with a copy of Sol Cesto you control.
-- This patcher has been tested on Sol Cesto `v100.2`.
-- The patcher does not modify the original game folder; it creates a separate patched copy.
-- If the money display changes but purchases still fail, press `F8` after reaching the menu/shop, or enable the `F9` lock.
-
-## Windows SmartScreen
-
-Windows may show `Publisher: Unknown publisher` for downloaded EXE builds because the release EXE is not Authenticode-signed.
-
-To make that Windows prompt show `Craighead Labs`, the EXE must be signed with a trusted code-signing certificate issued to Craighead Labs. Project metadata can set the file's company/product details, but it does not change the SmartScreen publisher line by itself.
-
-## Repository Layout
-
-```text
-SolCestoPatcher/          Windows Forms patcher source
-README.md                 Usage instructions
-LICENSE                   MIT license
-```
+- Use this only with a copy of Sol Cesto you control.
+- Keep `package.nw` as a folder in modded builds; repacking it caused black-screen launches during testing.
+- If a value changes visually but gameplay logic ignores it, patch the underlying Construct runtime object state first and mirror the UI second.
+- To disable a mod without deleting it, set `"enabled": false` in `mods.json`.

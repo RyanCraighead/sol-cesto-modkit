@@ -12,14 +12,14 @@
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
-    <AssemblyName>SolCestoPatcher</AssemblyName>
-    <RootNamespace>SolCestoPatcher</RootNamespace>
-    <Title>Sol Cesto Gold Patcher</Title>
-    <FileDescription>Sol Cesto Gold Patcher</FileDescription>
-    <Product>Sol Cesto Gold Patcher</Product>
+    <AssemblyName>SolCestoModKitInstaller</AssemblyName>
+    <RootNamespace>SolCestoModKitInstaller</RootNamespace>
+    <Title>Sol Cesto ModKit Installer</Title>
+    <FileDescription>Sol Cesto ModKit Installer</FileDescription>
+    <Product>Sol Cesto ModKit Installer</Product>
     <Company>Craighead Labs</Company>
     <Authors>Craighead Labs</Authors>
-    <Description>Gold patcher for Sol Cesto v100.2.</Description>
+    <Description>Mod loader installer and example mods for Sol Cesto v100.2.</Description>
     <Copyright>Copyright (c) 2026 Craighead Labs</Copyright>
   </PropertyGroup>
 </Project>

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sol Cesto Modding"
+  short_description: "Build and test Sol Cesto NW.js ModKit mods"
+  default_prompt: "Use $sol-cesto-modding to inspect Sol Cesto, unpack package.nw, find real runtime state, and build a tested ModKit mod."
