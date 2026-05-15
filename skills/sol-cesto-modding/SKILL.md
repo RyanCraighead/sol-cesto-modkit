@@ -15,7 +15,8 @@ Sol Cesto is packaged like an NW.js/Construct game:
 
 - `SolCesto.exe` is mostly the NW.js/native runtime shell.
 - `package.nw` contains the actual game project and JavaScript runtime payload.
-- The useful modding target is usually `package.nw\scripts\main.js`.
+- The useful bootstrap target is `package.nw\scripts\main.js`.
+- Normal mods should live in the generated `mods` folder, not directly in `main.js`.
 - For many features, changing displayed text is not enough. The game logic reads Construct runtime object state.
 - Prefer runtime object patches over Cheat Engine memory scans.
 
@@ -35,6 +36,8 @@ Known gold-related runtime targets:
   - display text object for the visible gold value
 
 `or` is French for gold.
+
+The ModKit stores this as the `money` mapping in `mods\mappings\sol-cesto-v100.2.json`.
 
 ## Safety Rules
 
@@ -190,6 +193,23 @@ Use this pattern for any new feature:
 4. Update UI text only as a mirror.
 5. Test whether game logic accepts the change.
 
+When the ModKit inspector is installed, prefer its built-in discovery helpers:
+
+- `F2`: dump runtime objects, instance variables, mappings, and active patches to `mods\dumps`.
+- `F3`: dump known mapping values to `mods\dumps`.
+- `F4`: show a small object/mapping summary.
+
+Aliases `F6`, `F7`, and `F10` are also bound, but `F2/F3/F4` are more reliable in NW.js.
+
+Console helpers exposed by `_system\inspector.js`:
+
+```js
+window.solCestoListObjects()
+window.solCestoDescribeObject("heros")
+window.solCestoDumpRuntimeMap()
+window.solCestoDumpMappings()
+```
+
 ## Gold Mod Implementation Pattern
 
 Do not only set `hero_or` text. That changes the display but not purchase logic.
@@ -290,6 +310,53 @@ When generating a patcher, keep patch logic deterministic:
 9. Patch `package.nw\scripts\main.js`.
 10. Write the `mods` folder and log the exact modded executable path.
 
+Expected generated ModKit layout:
+
+```text
+mods\
+  mods.json
+  _system\inspector.js
+  commands\
+  config\
+  docs\MOD_API.md
+  docs\MAPPINGS.md
+  dumps\
+  examples\example-hook.js
+  examples\example-overlay.js
+  logs\
+  mappings\sol-cesto-v100.2.json
+  money-lock.js
+  responses\
+```
+
+The loader exposes `window.SolCestoModding` and the `api` object passed to each mod. Important namespaces:
+
+- `api.mappings.get/list/getValue/setValue`
+- `api.patch.before/after/replace/unpatch/list`
+- `api.watch.value/instanceVar/globalVar/mappedValue`
+- `api.config.read/write`
+- `api.files.readJson/writeJson/writeDump`
+- `api.events.on/off/emit`
+- `api.commands.register/list/execute/process`
+
+This is the Sol Cesto equivalent of a BepInEx + Harmony workflow. It is not .NET assembly patching; it patches JavaScript functions, watches Construct runtime values, and uses JSON mappings for known runtime fields.
+
+For agent-driven inspection without keyboard focus, write JSON commands to `mods\commands` while the game is running. The loader writes responses to `mods\responses`.
+
+```json
+{ "id": "dump-now", "command": "dumpRuntimeMap", "sampleLimit": 5 }
+```
+
+Useful commands:
+
+- `listCommands`
+- `listObjects`
+- `describeObject`
+- `dumpRuntimeMap`
+- `dumpMappings`
+- `getMappingValue`
+- `setMappingValue`
+
 ## Testing Checklist
 
 Basic launch test:
@@ -357,9 +424,14 @@ Current behavior:
 - Extracts/copies `package.nw`.
 - Injects the Sol Cesto ModKit loader into `scripts\main.js`.
 - Writes a `mods` folder beside `SolCesto.exe`.
+- Writes `_system\inspector.js`, docs, logs, dumps, config, examples, and mappings.
 - Includes `mods\money-lock.js` as a proven example mod when selected.
+- Uses `mods\mappings\sol-cesto-v100.2.json` for the money mapping.
 - `F8` sets money once through the example mod.
 - `F9` toggles money lock through the example mod.
+- `F2` dumps runtime objects through the inspector.
+- `F3` dumps mapping values through the inspector.
+- `F4` shows an inspector summary.
 - Lock starts off.
 
 Build command:

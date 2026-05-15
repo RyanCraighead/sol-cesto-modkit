@@ -21,6 +21,7 @@ internal static class Program
                     GameFolder: args[1],
                     OutputFolder: args[2],
                     MoneyValue: moneyValue,
+                    IncludeInspectorTools: true,
                     IncludeMoneyMod: true,
                     MoneyLockStartsOn: false),
                 _ => { });
@@ -38,6 +39,7 @@ internal sealed class MainForm : Form
     private readonly TextBox _gameFolderText = new();
     private readonly TextBox _outputFolderText = new();
     private readonly NumericUpDown _moneyValue = new();
+    private readonly CheckBox _includeInspectorTools = new();
     private readonly CheckBox _includeMoneyMod = new();
     private readonly CheckBox _moneyLockStartsOn = new();
     private readonly Button _patchButton = new();
@@ -98,7 +100,8 @@ internal sealed class MainForm : Form
         AutoFillOutputFolder();
 
         AppendLog("Installs a lightweight BepInEx-style JavaScript mod loader for Sol Cesto.");
-        AppendLog("Generated mods live in the output folder's mods directory.");
+        AppendLog("Generated mods, mappings, logs, and dumps live in the output folder's mods directory.");
+        AppendLog("Inspector hotkeys: F2 dumps runtime objects, F3 dumps mapped values, F4 shows summary.");
         AppendLog("Default money mod hotkeys: F8 sets money once, F9 toggles the money lock.");
     }
 
@@ -142,7 +145,7 @@ internal sealed class MainForm : Form
             Dock = DockStyle.Top,
             AutoSize = true,
             Padding = new Padding(0, 0, 0, 12),
-            WrapContents = false
+            WrapContents = true
         };
 
         panel.Controls.Add(new Label
@@ -157,6 +160,12 @@ internal sealed class MainForm : Form
         _moneyValue.Value = 999;
         _moneyValue.Width = 100;
         panel.Controls.Add(_moneyValue);
+
+        _includeInspectorTools.Text = "Include inspector tools";
+        _includeInspectorTools.Checked = true;
+        _includeInspectorTools.AutoSize = true;
+        _includeInspectorTools.Margin = new Padding(18, 6, 0, 0);
+        panel.Controls.Add(_includeInspectorTools);
 
         _includeMoneyMod.Text = "Include money mod";
         _includeMoneyMod.Checked = true;
@@ -282,6 +291,7 @@ internal sealed class MainForm : Form
                 GameFolder: _gameFolderText.Text.Trim(),
                 OutputFolder: _outputFolderText.Text.Trim(),
                 MoneyValue: (int)_moneyValue.Value,
+                IncludeInspectorTools: _includeInspectorTools.Checked,
                 IncludeMoneyMod: _includeMoneyMod.Checked,
                 MoneyLockStartsOn: _moneyLockStartsOn.Checked);
 
@@ -353,6 +363,7 @@ internal sealed record PatchOptions(
     string GameFolder,
     string OutputFolder,
     int MoneyValue,
+    bool IncludeInspectorTools,
     bool IncludeMoneyMod,
     bool MoneyLockStartsOn);
 
@@ -439,6 +450,11 @@ internal static class ModKitInstaller
         log(Path.Combine(outputDir, "SolCesto.exe"));
         log("Mods folder:");
         log(Path.Combine(outputDir, "mods"));
+        if (options.IncludeInspectorTools)
+        {
+            log("Inspector hotkeys: F2 dumps runtime objects, F3 dumps mapped values, F4 shows summary.");
+        }
+
         if (options.IncludeMoneyMod)
         {
             log("Money mod hotkeys: F8 sets money once, F9 toggles lock.");
@@ -466,15 +482,40 @@ internal static class ModKitInstaller
     private static void CreateModsFolder(string outputDir, PatchOptions options, Action<string> log)
     {
         var modsDir = Path.Combine(outputDir, "mods");
+        var systemDir = Path.Combine(modsDir, "_system");
         var examplesDir = Path.Combine(modsDir, "examples");
+        var configDir = Path.Combine(modsDir, "config");
+        var docsDir = Path.Combine(modsDir, "docs");
+        var dumpsDir = Path.Combine(modsDir, "dumps");
+        var logsDir = Path.Combine(modsDir, "logs");
+        var mappingsDir = Path.Combine(modsDir, "mappings");
+        var commandsDir = Path.Combine(modsDir, "commands");
+        var responsesDir = Path.Combine(modsDir, "responses");
 
         log("Writing mods folder...");
         Directory.CreateDirectory(modsDir);
+        Directory.CreateDirectory(systemDir);
         Directory.CreateDirectory(examplesDir);
+        Directory.CreateDirectory(configDir);
+        Directory.CreateDirectory(docsDir);
+        Directory.CreateDirectory(dumpsDir);
+        Directory.CreateDirectory(logsDir);
+        Directory.CreateDirectory(mappingsDir);
+        Directory.CreateDirectory(commandsDir);
+        Directory.CreateDirectory(responsesDir);
 
-        FrameworkTemplates.WriteUtf8NoBom(Path.Combine(modsDir, "mods.json"), FrameworkTemplates.Manifest(options.IncludeMoneyMod));
+        FrameworkTemplates.WriteUtf8NoBom(Path.Combine(modsDir, "mods.json"), FrameworkTemplates.Manifest(options.IncludeInspectorTools, options.IncludeMoneyMod));
         FrameworkTemplates.WriteUtf8NoBom(Path.Combine(modsDir, "README.md"), FrameworkTemplates.ModsReadme());
+        FrameworkTemplates.WriteUtf8NoBom(Path.Combine(docsDir, "MOD_API.md"), FrameworkTemplates.ModApiDocs());
+        FrameworkTemplates.WriteUtf8NoBom(Path.Combine(docsDir, "MAPPINGS.md"), FrameworkTemplates.MappingsDocs());
+        FrameworkTemplates.WriteUtf8NoBom(Path.Combine(mappingsDir, "sol-cesto-v100.2.json"), FrameworkTemplates.SolCestoMappings());
         FrameworkTemplates.WriteUtf8NoBom(Path.Combine(examplesDir, "example-overlay.js"), FrameworkTemplates.ExampleOverlayMod());
+        FrameworkTemplates.WriteUtf8NoBom(Path.Combine(examplesDir, "example-hook.js"), FrameworkTemplates.ExampleHookMod());
+
+        if (options.IncludeInspectorTools)
+        {
+            FrameworkTemplates.WriteUtf8NoBom(Path.Combine(systemDir, "inspector.js"), FrameworkTemplates.InspectorMod());
+        }
 
         if (options.IncludeMoneyMod)
         {
